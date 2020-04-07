@@ -29,7 +29,7 @@ static const struct option longopts[] = {
 
 void print_usage_get()
 {
-    fprintf(stderr, "usage: bri get [-i <index_filename.bri>] <input.bam> <readname>\n");
+    fprintf(stderr, "usage: cat readnames.txt | bri get [-i <index_filename.bri>] <input.bam>\n");
 }
 
 // comparator used by bsearch, direct strcmp through the name pointer
@@ -93,6 +93,19 @@ void bam_read_idx_get_by_record(htsFile* fp, bam_hdr_t* hdr, bam1_t* b, bam_read
     }
 }
 
+char* get_next_read_name()
+{
+    char* readname = NULL;
+    size_t size;
+    if (getline(&readname, &size, stdin) == -1) {
+        return NULL;
+    }
+
+    readname[strlen(readname) - 1] = '\0';
+
+    return readname;
+}
+
 //
 int bam_read_idx_get_main(int argc, char** argv)
 {
@@ -108,12 +121,12 @@ int bam_read_idx_get_main(int argc, char** argv)
                 input_bri = optarg;
         }
     }
-    
-    if (argc - optind < 2) {
+
+    if (argc - optind < 1) {
         fprintf(stderr, "bri get: not enough arguments\n");
         die = 1;
     }
-
+    
     if(die) {
         print_usage_get();
         exit(EXIT_FAILURE);
@@ -130,8 +143,8 @@ int bam_read_idx_get_main(int argc, char** argv)
     bam_read_idx_record* start;
     bam_read_idx_record* end;
 
-    for(int i = optind; i < argc; i++) {
-        char* readname = argv[i];
+    char* readname = get_next_read_name();
+    while (readname != NULL) {
         bam_read_idx_get_range(bri, readname, &start, &end);
         bam1_t* b = bam_init1();
         while(start != end) {
@@ -146,6 +159,8 @@ int bam_read_idx_get_main(int argc, char** argv)
             start++;
         }
         bam_destroy1(b);
+
+        readname = get_next_read_name();
     }
 
     hts_close(out_fp);
