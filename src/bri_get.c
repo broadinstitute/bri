@@ -122,7 +122,7 @@ int bam_read_idx_get_main(int argc, char** argv)
         }
     }
 
-    if (argc - optind < 1) {
+    if (argc - optind < 2) {
         fprintf(stderr, "bri get: not enough arguments\n");
         die = 1;
     }
@@ -143,7 +143,20 @@ int bam_read_idx_get_main(int argc, char** argv)
     bam_read_idx_record* start;
     bam_read_idx_record* end;
 
-    char* readname = get_next_read_name();
+    int from_stdin = 0;
+    if (argv[optind][0] == '-') {
+        from_stdin = 1;
+    }
+
+    char* readname = NULL;
+    int offset = 0;
+    if (from_stdin) {
+        readname = get_next_read_name();
+    } else {
+        readname = argv[optind + offset];
+        offset++;
+    }
+
     while (readname != NULL) {
         bam_read_idx_get_range(bri, readname, &start, &end);
         bam1_t* b = bam_init1();
@@ -160,7 +173,12 @@ int bam_read_idx_get_main(int argc, char** argv)
         }
         bam_destroy1(b);
 
-        readname = get_next_read_name();
+        if (from_stdin) {
+            readname = get_next_read_name();
+        } else {
+            readname = argv[optind + offset];
+            offset++;
+        }
     }
 
     hts_close(out_fp);
